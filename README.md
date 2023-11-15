@@ -11,7 +11,7 @@ Ensure you have a C compiler installed on your system (e.g., GCC).
 1. **Clone the repository to your local machine:**
 
     ```bash
-    git clone https://github.com/(your-username)/decision-tree-classifier.git
+    git clone https://github.com/Snapman5678/decision-tree-classifier.git
     ```
 
 2. **Navigate to the project directory:**
@@ -48,17 +48,17 @@ Compile the C code using your preferred compiler (e.g., GCC):
 
 #### For Fruits Dataset
 
-- **Color:** Enter a string representing the color of the fruit (e.g., "Green").
-- **Diameter:** Enter an integer representing the diameter of the fruit.
-- **Label:** Enter a string representing the label of the fruit (e.g., "Apple").
+- **Color:** Enter a string representing the color of the fruit from the following options only ("Green","Red","Yellow").
+- **Diameter:** Enter an integer representing the diameter of the fruit ("Any integer").
+- **Label:** Enter a string representing the label of the fruit from the following options only ("Apple","Grape","Lemon").
 
 #### For Diseases Dataset
 
-- **Symptom 1:** Enter a string representing the first symptom (e.g., "Hightemperature").
-- **Severity Level:** Enter an integer representing the severity level.
-- **Duration of Symptoms:** Enter an integer representing the duration of symptoms in days.
-- **Symptom 2:** Enter a string representing the second symptom (e.g., "Dryskin").
-- **Disease Name:** Enter a string representing the name of the disease (e.g., "Fever").
+- **Symptom 1:** Enter a string representing the first symptom from the following options only ("Hightemperature","Fatigue","Cough").
+- **Severity Level:** Enter an integer representing the severity level ("Any integer").
+- **Duration of Symptoms:** Enter an integer representing the duration of symptoms in days ("Any integer").
+- **Symptom 2:** Enter a string representing the second symptom from the following options only ("Dryskin","Headache","Sorethroat").
+- **Disease Name:** Enter a string representing the name of the disease from the following options only ("Fever","Commoncold","Flu").
 
 ### Output
 
