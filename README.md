@@ -19,15 +19,7 @@ Ensure you have a C compiler installed on your system (e.g., GCC).
     ```bash
     cd decision-tree-classifier
     ```
-
-## Compilation
-
-Compile the C code using your preferred compiler (e.g., GCC):
-
-    ```bash
-    gcc decision_tree_classifier.c -o decision_tree_classifier
-    ```
-
+    
 ## Running the Program
 
 1. **Compile the C code using your preferred compiler (e.g., GCC):**
