@@ -87,5 +87,16 @@ int findBestSplit_f(int **dataset, int numRows, int numCols, int *feature, int *
 int findBestSplit_h(int **dataset, int numRows, int numCols, int *feature, int *threshold, int *left_count, int ***leftData, int *right_count, int ***rightData);
 TreeNode *buildDecisionTree(int **dataset, int numRows, int numCols, int(*findBestSplitCallback)(int **, int, int, int *, int *, int *, int ***, int *, int ***));
 int predict(TreeNode *root, int *sample);
+void capitalizeFirstLetter(char *str);
+int isValidColor(const char *color);
+int isValidLabel(const char *label);
+int isValidSymptom(const char *symptom);
+int isValidDiseaseName(const char *disease_name);
+void getValidStringInput(char *input, int maxLength, int (*isValid)(const char *),void (*printOptions)());
+void printFruitLabels();
+void printDiseaseLabels();
+void printSymptoms();
+void printColors();
+
 
 #endif // DECISION_TREE_CLASSIFIER_H

@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include <ctype.h>
 
 #define MAX_TRAINING_SAMPLES_f 6
 #define UNIQUE_LABELS_f 3
@@ -622,3 +623,70 @@ int predict(TreeNode *root, int *sample)
     return root->label;
 }
 
+/*
+Below are the added functions so that user doesnt put wrong data manually
+*/
+
+// Function to capitalize the first letter and lowercase the rest
+void capitalizeFirstLetter(char *str) {
+    if (str[0]) {
+        str[0] = toupper((unsigned char)str[0]);
+    }
+    for (int i = 1; str[i]; i++) {
+        str[i] = tolower((unsigned char)str[i]);
+    }
+}
+
+// Function to check if a color or label is valid
+int isValidColor(const char *color) {
+    return strcmp(color, "Green") == 0 || strcmp(color, "Red") == 0 || strcmp(color, "Yellow") == 0;
+}
+
+int isValidLabel(const char *label) {
+    return strcmp(label, "Apple") == 0 || strcmp(label, "Grape") == 0 || strcmp(label, "Lemon") == 0;
+}
+
+
+// Function to check if a symptom or disease name is valid
+int isValidSymptom(const char *symptom) {
+    return strcmp(symptom, "Hightemperature") == 0 || strcmp(symptom, "Fatigue") == 0 || strcmp(symptom, "Cough") == 0 ||
+           strcmp(symptom, "Dryskin") == 0 || strcmp(symptom, "Headache") == 0 || strcmp(symptom, "Sorethroat") == 0;
+}
+
+int isValidDiseaseName(const char *disease_name) {
+    return strcmp(disease_name, "Fever") == 0 || strcmp(disease_name, "Commoncold") == 0 || strcmp(disease_name, "Flu") == 0;
+}
+
+// Function that gets valid string input from the user that points a function to check if the input is valid
+void getValidStringInput(char *input, int maxLength, int (*isValid)(const char *),void (*printOptions)()){
+    while (1) {
+        fgets(input, maxLength, stdin);
+        input[strcspn(input, "\n")] = 0;  
+
+        capitalizeFirstLetter(input);
+
+        if (isValid(input)) {
+            break;
+        } else {
+            printOptions();
+            printf("Please enter a valid value: ");
+        }
+    }
+}
+
+//Functions to print the labels
+void printFruitLabels() {
+    printf("Fruit labels: Apple, Grape, Lemon\n");
+}
+
+void printDiseaseLabels() {
+    printf("Disease labels: Fever, Commoncold, Flu\n");
+}
+
+void printSymptoms() {
+    printf("Symptoms: Hightemperature, Fatigue, Cough\n");
+}
+
+void printColors() {
+    printf("Colors: Green, Red, Yellow\n");
+}
