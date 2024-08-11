@@ -19,38 +19,38 @@ Ensure you have a C compiler installed on your system (e.g., GCC).
     ```bash
     cd decision-tree-classifier
     ```
-    
+
+3. **Build the project using the provided `Makefile`:**
+
+    ```bash
+    make
+    ```
+
 ## Running the Program
 
-1. **Compile the C code using your preferred compiler (e.g., GCC):**
+1. **Run the compiled executable:**
 
     ```bash
-    gcc decision_tree_classifier.c -o decision_tree_classifier
+    ./main
     ```
 
-2. **Run the compiled executable:**
-
-    ```bash
-    ./decision_tree_classifier
-    ```
-
-3. Follow the on-screen instructions to choose between predicting fruit or disease classes. Input testing data as prompted.
+2. Follow the on-screen instructions to choose between predicting fruit or disease classes. Input testing data as prompted.
 
 ### Input Format
 
 #### For Fruits Dataset
 
-- **Color:** Enter a string representing the color of the fruit from the following options only ("Green","Red","Yellow").
+- **Color:** Enter a string representing the color of the fruit from the following options only ("Green", "Red", "Yellow").
 - **Diameter:** Enter an integer representing the diameter of the fruit ("Any integer").
-- **Label:** Enter a string representing the label of the fruit from the following options only ("Apple","Grape","Lemon").
+- **Label:** Enter a string representing the label of the fruit from the following options only ("Apple", "Grape", "Lemon").
 
 #### For Diseases Dataset
 
-- **Symptom 1:** Enter a string representing the first symptom from the following options only ("Hightemperature","Fatigue","Cough").
+- **Symptom 1:** Enter a string representing the first symptom from the following options only ("Hightemperature", "Fatigue", "Cough").
 - **Severity Level:** Enter an integer representing the severity level ("Any integer").
 - **Duration of Symptoms:** Enter an integer representing the duration of symptoms in days ("Any integer").
-- **Symptom 2:** Enter a string representing the second symptom from the following options only ("Dryskin","Headache","Sorethroat").
-- **Disease Name:** Enter a string representing the name of the disease from the following options only ("Fever","Commoncold","Flu").
+- **Symptom 2:** Enter a string representing the second symptom from the following options only ("Dryskin", "Headache", "Sorethroat").
+- **Disease Name:** Enter a string representing the name of the disease from the following options only ("Fever", "Commoncold", "Flu").
 
 ### Output
 
@@ -59,3 +59,33 @@ The program will print the predicted class labels along with the actual labels f
 ### Exiting the Program
 
 To exit the program, choose option 3 in the menu.
+
+## Makefile
+
+The `Makefile` provided allows for compiling and cleaning the project. Use the following commands:
+
+- **To compile the project:**
+
+    ```bash
+    make
+    ```
+
+- **To clean up the build artifacts:**
+
+    ```bash
+    make clean
+    ```
+
+**Note for Windows Users:**
+The `make clean` command may not work on Windows systems due to differences in command syntax. Instead, manually delete the following files:
+
+- `main`
+- `main.o`
+- `classification/decision_tree_classifier.o`
+
+To remove these files, you can use the following commands in Command Prompt:
+
+```cmd
+del main
+del main.o
+del classification\decision_tree_classifier.o
