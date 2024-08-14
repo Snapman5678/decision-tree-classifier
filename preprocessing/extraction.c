@@ -5,15 +5,77 @@
 /*
 Structure that stores the csv data
 */
+
+// Define the Column structure
+typedef struct Column {
+    int type; // 0 for categorical, 1 for integer, 2 for float
+    union {
+        char **strings; // For categorical data
+        int *integers;  // For integer data
+        float *floats;  // For float data
+    } data;
+} Column;
+
+
 typedef struct DataFrame{
     int rows;
     int cols;
-    char ** headings;
-    char ***data;
-    int *type; // 0 for categorical and 1 for numerical 2 and 2 for float
+    char ** headings; // Column headings
+    Column *columns; // Array of columns of different types
 } DataFrame;
 
+// Initialize Column structure
+void initColumn(Column *column, int type, int size) {
+    column->type = type;
+    switch (type) {
+        case 0:
+            column->data.strings = malloc(size * sizeof(char *));
+            if (column->data.strings == NULL) {
+                printf("Memory allocation failed for strings in column\n");
+                exit(1);
+            }
+            for (int i = 0; i < size; i++) {
+                column->data.strings[i] = NULL; // Initialize each string pointer to NULL
+            }
+            break;
+        case 1:
+            column->data.integers = malloc(size * sizeof(int));
+            if (column->data.integers == NULL) {
+                printf("Memory allocation failed for integers in column\n");
+                exit(1);
+            }
+            break;
+        case 2:
+            column->data.floats = malloc(size * sizeof(float));
+            if (column->data.floats == NULL) {
+                printf("Memory allocation failed for floats in column\n");
+                exit(1);
+            }
+            break;
+    }
+}
+
+// Free memory allocated for Column structure
+void freeColumn(Column *column,int size) {
+    switch (column->type) {
+        case 0:
+            for (int i = 0; i < size; i++) {
+                free(column->data.strings[i]);
+            }
+            free(column->data.strings);
+            break;
+        case 1:
+            free(column->data.integers);
+            break;
+        case 2:
+            free(column->data.floats);
+            break;
+    }
+}
+
+
 // Function to read the CSV file and determine column types simultaneously
+// TODO : Need to fix the issue of null values in the data
 DataFrame read_csv(char *filename) {
     FILE *file = fopen(filename, "r");
     if (file == NULL) {
@@ -25,9 +87,8 @@ DataFrame read_csv(char *filename) {
     DataFrame df;
     df.rows = 0;
     df.cols = 0;
-    df.data = NULL;
     df.headings = NULL;
-    df.type = NULL;
+    df.columns = NULL;
 
     // Read the file line by line
     char line[1024];
@@ -39,23 +100,19 @@ DataFrame read_csv(char *filename) {
         char *token = strtok(line, ",");
         int col = 0;
 
-        // Allocate memory for headings and types
+        // Allocate memory for headings and columns
         df.headings = (char **)malloc(1024 * sizeof(char *));
         if (df.headings == NULL) {
             printf("Memory allocation failed for heading column\n");
             exit(1);
         }
-        df.type = (int *)malloc(1024 * sizeof(int)); // Allocate initial memory
-        if (df.type == NULL) {
-            printf("Memory allocation failed for column types\n");
+        df.columns = (Column *)malloc(1024 * sizeof(Column)); // Allocate initial memory
+        if (df.columns == NULL) {
+            printf("Memory allocation failed for columns\n");
             exit(1);
         }
 
-        // Initialize type to categorical
-        for (int i = 0; i < 1024; i++) {
-            df.type[i] = 0;
-        }
-
+        // Initialize columns
         while (token) {
             df.headings[col] = (char *)malloc(strlen(token) + 1);
             if (df.headings[col] == NULL) {
@@ -63,6 +120,10 @@ DataFrame read_csv(char *filename) {
                 exit(1);
             }
             strcpy(df.headings[col], token);
+            
+            // Initialize each column as categorical
+            initColumn(&df.columns[col], 0, 0); // Initialize with 0 rows initially
+
             token = strtok(NULL, ",");
             col++;
         }
@@ -76,28 +137,23 @@ DataFrame read_csv(char *filename) {
         char *token = strtok(line, ",");
         int col = 0;
 
-        // Resize df.data for new row
-        df.data = (char ***)realloc(df.data, (df.rows + 1) * sizeof(char **));
-        if (df.data == NULL) {
-            printf("Memory allocation failed for data row : %d\n", df.rows);
-            exit(1);
-        }
-        df.data[df.rows] = (char **)malloc(df.cols * sizeof(char *));
-        if (df.data[df.rows] == NULL) {
-            printf("Memory allocation failed for data column %d in data row : %d\n", df.cols, df.rows);
-            exit(1);
-        }
-
-        while (token) {
-            df.data[df.rows][col] = (char *)malloc(strlen(token) + 1);
-            if (df.data[df.rows][col] == NULL) {
-                printf("String Memory allocation failed for data column %d in data row : %d\n", col, df.rows);
+        // Resize columns for new row
+        for (int i = 0; i < df.cols; i++) {
+            Column *column = &df.columns[i];
+            column->data.strings = realloc(column->data.strings, (df.rows + 1) * sizeof(char *));
+            if (column->data.strings == NULL) {
+                printf("Memory allocation failed for data column %d in row %d\n", i, df.rows);
                 exit(1);
             }
-            strcpy(df.data[df.rows][col], token);
+            column->data.strings[df.rows] = (char *)malloc(strlen(token) + 1);
+            if (column->data.strings[df.rows] == NULL) {
+                printf("String Memory allocation failed for data column %d in row %d\n", i, df.rows);
+                exit(1);
+            }
+            strcpy(column->data.strings[df.rows], token);
 
             // Check if the column type should be numerical
-            if (df.type[col] == 0) { // Only check if it's currently categorical
+            if (column->type == 0) { // Only check if it's currently categorical
                 int is_integer = 1;
                 int is_float = 1;
 
@@ -153,11 +209,11 @@ DataFrame read_csv(char *filename) {
 
                 // Assign type based on column content
                 if (is_integer) {
-                    df.type[col] = 1;
+                    column->type = 1;
                 } else if (is_float) {
-                    df.type[col] = 2;
+                    column->type = 2;
                 } else {
-                    df.type[col] = 0;
+                    column->type = 0;
                 }
             }
 
@@ -169,29 +225,70 @@ DataFrame read_csv(char *filename) {
         df.rows++;
     }
 
+    // Resize columns to final row count
+    for (int i = 0; i < df.cols; i++) {
+        Column *column = &df.columns[i];
+        column->data.strings = realloc(column->data.strings, (df.rows) * sizeof(char *));
+        if (column->data.strings == NULL) {
+            printf("Memory allocation failed for finalizing column %d\n", i);
+            exit(1);
+        }
+    }
+
     // Close the file
     fclose(file);
+    printf("File read successfully\n");
 
     return df;
 }
 
-// Function to convert Dataframe column to integer or float depending on the df.type
+// TODO:Function to convert Dataframe column to integer or float depending on the df.column.type
+void convert_to_int_float(DataFrame *df) {
+    printf("Converting to integer and float\n");
+    for (int i = 0; i < df->cols; i++) {
+        Column *column = &df->columns[i];
+        if (column->type == 1) { // Integer
+            column->data.integers = malloc(df->rows * sizeof(int));
+            if (column->data.integers == NULL) {
+                printf("Memory allocation failed for integer data\n");
+                exit(1);
+            }
+            for (int j = 0; j < df->rows; j++) {
+                column->data.integers[j] = atoi(column->data.strings[j]);
+                free(column->data.strings[j]); // Free the original string data
+            }
+            free(column->data.strings); // Free the string pointers
+            column->data.strings = NULL; // Set to NULL to avoid dangling pointers
+        } else if (column->type == 2) { // Float
+            column->data.floats = malloc(df->rows * sizeof(float));
+            if (column->data.floats == NULL) {
+                printf("Memory allocation failed for float data\n");
+                exit(1);
+            }
+            for (int j = 0; j < df->rows; j++) {
+                column->data.floats[j] = atof(column->data.strings[j]);
+                free(column->data.strings[j]); // Free the original string data
+            }
+            free(column->data.strings); // Free the string pointers
+            column->data.strings = NULL; // Set to NULL to avoid dangling pointers
+        }
+    }
+    printf("Conversion successful\n");
+}
 
 
 
 // Function to print the DataFrame with number of rows and columns
-void print_df(DataFrame df,int rows,int cols){
+void print_df(DataFrame df, int rows, int cols){
+    printf("Index ");
     for(int i = 0; i < cols; i++){
         printf("%s ", df.headings[i]);
     }
     printf("\n");
-    for (int i = 0; i < df.cols; i++) {
-        printf("(%s) ",df.type[i] == 0 ? "Categorical" : df.type[i] == 1 ? "Integer" : "Float");
-    }
-    printf("\n");
     for(int i = 0; i < rows; i++){
+        printf("%d ", i+1);
         for(int j = 0; j < cols; j++){
-            printf("%s ", df.data[i][j]);
+            printf("%s ", df.columns[j].data.strings[i]);
         }
         printf("\n");
     }
@@ -207,19 +304,22 @@ void print_rows_cols(DataFrame df){
 }
 
 // Function to free the memory allocated for the DataFrame
-void free_df(DataFrame df){
-    for(int i = 0; i < df.rows; i++){
-        for(int j = 0; j < df.cols; j++){
-            free(df.data[i][j]);
-        }
-        free(df.data[i]);
+void free_df(DataFrame df) {
+    // Free each column's data
+    printf("Freeing memory\n");
+    for (int i = 0; i < df.cols; i++) {
+        freeColumn(&df.columns[i], df.rows); // Free column data
     }
-    free(df.data);
-    for(int i = 0; i < df.cols; i++){
+
+    // Free the columns array
+    free(df.columns);
+
+    // Free the headings array
+    for (int i = 0; i < df.cols; i++) {
         free(df.headings[i]);
     }
     free(df.headings);
-    free(df.type);
+    printf("Memory freed\n");
 }
 
 /*
@@ -229,9 +329,10 @@ Comment out when running main.c
 
 int main(){
     DataFrame df = read_csv("Salary_Data.csv");
-    print_df(df,df.rows,df.cols);
     print_rows_cols(df);
+    print_df(df, df.rows, df.cols);
+    convert_to_int_float(&df);
+    free_df(df);
     return 0;
-
 
 }
