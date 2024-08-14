@@ -1,14 +1,27 @@
-#include<stdio.h>
-#include<stdlib.h>
-#include<string.h>
-#include<ctype.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <ctype.h>
+
 /*
 Structure that stores the csv data
 */
 
+// Define fixed widths for column types
+#define INTEGER_WIDTH 7
+#define FLOAT_WIDTH 7
+#define CATEGORICAL_WIDTH 12
+
+
+// Enum for column types
+typedef enum {
+    CATEGORICAL = 0,
+    INTEGER = 1,
+    FLOAT = 2
+} ColumnType;
+
 // Define the Column structure
 typedef struct Column {
-    int type; // 0 for categorical, 1 for integer, 2 for float
     union {
         char **strings; // For categorical data
         int *integers;  // For integer data
@@ -16,19 +29,19 @@ typedef struct Column {
     } data;
 } Column;
 
-
-typedef struct DataFrame{
+typedef struct DataFrame {
     int rows;
     int cols;
-    char ** headings; // Column headings
+    char **headings; // Column headings
     Column *columns; // Array of columns of different types
+    ColumnType *types; // Array of column types
+    int *maxWidths; // Array of maximum widths for each column
 } DataFrame;
 
 // Initialize Column structure
-void initColumn(Column *column, int type, int size) {
-    column->type = type;
+void initColumn(Column *column, ColumnType type, int size) {
     switch (type) {
-        case 0:
+        case CATEGORICAL:
             column->data.strings = malloc(size * sizeof(char *));
             if (column->data.strings == NULL) {
                 printf("Memory allocation failed for strings in column\n");
@@ -38,14 +51,14 @@ void initColumn(Column *column, int type, int size) {
                 column->data.strings[i] = NULL; // Initialize each string pointer to NULL
             }
             break;
-        case 1:
+        case INTEGER:
             column->data.integers = malloc(size * sizeof(int));
             if (column->data.integers == NULL) {
                 printf("Memory allocation failed for integers in column\n");
                 exit(1);
             }
             break;
-        case 2:
+        case FLOAT:
             column->data.floats = malloc(size * sizeof(float));
             if (column->data.floats == NULL) {
                 printf("Memory allocation failed for floats in column\n");
@@ -56,27 +69,25 @@ void initColumn(Column *column, int type, int size) {
 }
 
 // Free memory allocated for Column structure
-void freeColumn(Column *column,int size) {
-    switch (column->type) {
-        case 0:
+void freeColumn(Column *column, int type, int size) {
+    switch (type) {
+        case CATEGORICAL:
             for (int i = 0; i < size; i++) {
                 free(column->data.strings[i]);
             }
             free(column->data.strings);
             break;
-        case 1:
+        case INTEGER:
             free(column->data.integers);
             break;
-        case 2:
+        case FLOAT:
             free(column->data.floats);
             break;
     }
 }
 
-
 // Function to read the CSV file and determine column types simultaneously
-// TODO : Need to fix the issue of null values in the data
-DataFrame read_csv(char *filename) {
+DataFrame read_csv_initial(char *filename) {
     FILE *file = fopen(filename, "r");
     if (file == NULL) {
         printf("Error opening file\n");
@@ -89,6 +100,8 @@ DataFrame read_csv(char *filename) {
     df.cols = 0;
     df.headings = NULL;
     df.columns = NULL;
+    df.types = NULL; // Initialize the types array
+    df.maxWidths = NULL;
 
     // Read the file line by line
     char line[1024];
@@ -111,18 +124,24 @@ DataFrame read_csv(char *filename) {
             printf("Memory allocation failed for columns\n");
             exit(1);
         }
+        df.types = (ColumnType *)malloc(1024 * sizeof(ColumnType)); // Allocate memory for types
+        if (df.types == NULL) {
+            printf("Memory allocation failed for column types\n");
+            exit(1);
+        }
 
         // Initialize columns
         while (token) {
             df.headings[col] = (char *)malloc(strlen(token) + 1);
             if (df.headings[col] == NULL) {
-                printf("String Memory allocation failed for heading column in column: %d\n", col);
+                printf("String memory allocation failed for heading column in column: %d\n", col);
                 exit(1);
             }
             strcpy(df.headings[col], token);
             
             // Initialize each column as categorical
-            initColumn(&df.columns[col], 0, 0); // Initialize with 0 rows initially
+            initColumn(&df.columns[col], CATEGORICAL, 0); // Initialize with 0 rows initially
+            df.types[col] = CATEGORICAL; // Set type to categorical initially
 
             token = strtok(NULL, ",");
             col++;
@@ -140,6 +159,7 @@ DataFrame read_csv(char *filename) {
         // Resize columns for new row
         for (int i = 0; i < df.cols; i++) {
             Column *column = &df.columns[i];
+            ColumnType type = df.types[i];
             column->data.strings = realloc(column->data.strings, (df.rows + 1) * sizeof(char *));
             if (column->data.strings == NULL) {
                 printf("Memory allocation failed for data column %d in row %d\n", i, df.rows);
@@ -147,13 +167,13 @@ DataFrame read_csv(char *filename) {
             }
             column->data.strings[df.rows] = (char *)malloc(strlen(token) + 1);
             if (column->data.strings[df.rows] == NULL) {
-                printf("String Memory allocation failed for data column %d in row %d\n", i, df.rows);
+                printf("String memory allocation failed for data column %d in row %d\n", i, df.rows);
                 exit(1);
             }
             strcpy(column->data.strings[df.rows], token);
 
             // Check if the column type should be numerical
-            if (column->type == 0) { // Only check if it's currently categorical
+            if (type == CATEGORICAL) { // Only check if it's currently categorical
                 int is_integer = 1;
                 int is_float = 1;
 
@@ -209,11 +229,11 @@ DataFrame read_csv(char *filename) {
 
                 // Assign type based on column content
                 if (is_integer) {
-                    column->type = 1;
+                    df.types[i] = INTEGER;
                 } else if (is_float) {
-                    column->type = 2;
+                    df.types[i] = FLOAT;
                 } else {
-                    column->type = 0;
+                    df.types[i] = CATEGORICAL;
                 }
             }
 
@@ -242,97 +262,216 @@ DataFrame read_csv(char *filename) {
     return df;
 }
 
-// TODO:Function to convert Dataframe column to integer or float depending on the df.column.type
+// Function to convert DataFrame columns to integers or floats depending on the type
 void convert_to_int_float(DataFrame *df) {
     printf("Converting to integer and float\n");
+
+    // Allocate a new array of Column to hold the converted data
+    Column *new_columns = malloc(df->cols * sizeof(Column));
+    if (new_columns == NULL) {
+        printf("Memory allocation failed for new columns\n");
+        exit(1);
+    }
+
+    // Iterate over each column
     for (int i = 0; i < df->cols; i++) {
-        Column *column = &df->columns[i];
-        if (column->type == 1) { // Integer
-            column->data.integers = malloc(df->rows * sizeof(int));
-            if (column->data.integers == NULL) {
-                printf("Memory allocation failed for integer data\n");
-                exit(1);
-            }
+        Column *old_column = &df->columns[i];
+        Column *new_column = &new_columns[i];
+        ColumnType type = df->types[i];
+
+        // Initialize the new column with the correct type and size
+        if (type == INTEGER) {
+            initColumn(new_column, INTEGER, df->rows);
             for (int j = 0; j < df->rows; j++) {
-                column->data.integers[j] = atoi(column->data.strings[j]);
-                free(column->data.strings[j]); // Free the original string data
+                new_column->data.integers[j] = atoi(old_column->data.strings[j]);
             }
-            free(column->data.strings); // Free the string pointers
-            column->data.strings = NULL; // Set to NULL to avoid dangling pointers
-        } else if (column->type == 2) { // Float
-            column->data.floats = malloc(df->rows * sizeof(float));
-            if (column->data.floats == NULL) {
-                printf("Memory allocation failed for float data\n");
-                exit(1);
-            }
+        } else if (type == FLOAT) {
+            initColumn(new_column, FLOAT, df->rows);
             for (int j = 0; j < df->rows; j++) {
-                column->data.floats[j] = atof(column->data.strings[j]);
-                free(column->data.strings[j]); // Free the original string data
+                new_column->data.floats[j] = atof(old_column->data.strings[j]);
             }
-            free(column->data.strings); // Free the string pointers
-            column->data.strings = NULL; // Set to NULL to avoid dangling pointers
+        } else {
+            initColumn(new_column, CATEGORICAL, df->rows);
+            for (int j = 0; j < df->rows; j++) {
+                new_column->data.strings[j] = strdup(old_column->data.strings[j]);
+                if (new_column->data.strings[j] == NULL) {
+                    printf("Memory allocation failed for string copy\n");
+                    exit(1);
+                }
+            }
         }
     }
-    printf("Conversion successful\n");
+
+    // Free old columns and update DataFrame
+    for (int i = 0; i < df->cols; i++) {
+        freeColumn(&df->columns[i], df->types[i], df->rows);
+    }
+    free(df->columns);
+    df->columns = new_columns;
 }
 
 
 
-// Function to print the DataFrame with number of rows and columns
-void print_df(DataFrame df, int rows, int cols){
-    printf("Index ");
-    for(int i = 0; i < cols; i++){
-        printf("%s ", df.headings[i]);
+// Helper function to determine the width of a string
+int getMaxWidthForString(char *str, int currentMax) {
+    int len = strlen(str);
+    return len > currentMax ? len : currentMax;
+}
+
+// Helper function to determine the width of an integer
+int getMaxWidthForInteger(int value, int currentMax) {
+    char buffer[20];
+    snprintf(buffer, sizeof(buffer), "%d", value);
+    int len = strlen(buffer);
+    return len > currentMax ? len : currentMax;
+}
+
+// Helper function to determine the width of a float
+int getMaxWidthForFloat(float value, int currentMax) {
+    char buffer[20];
+    snprintf(buffer, sizeof(buffer), "%.2f", value);
+    int len = strlen(buffer);
+    return len > currentMax ? len : currentMax;
+}
+
+int getMaxWidthForHeading(char *heading) {
+    return strlen(heading);
+}
+
+// Function that takes max of 3 integers
+int get_max_integer(int a, int b, int c) {
+    return a > b ? (a > c ? a : c) : (b > c ? b : c);
+}
+
+
+// Function to compute maximum widths for columns
+void computeMaxWidths(DataFrame *df) {
+    df->maxWidths = malloc(df->cols * sizeof(int));
+    if (df->maxWidths == NULL) {
+        printf("Memory allocation failed for max widths\n");
+        exit(1);
+    }
+
+    // Initialize maxWidths with 0
+    for (int i = 0; i < df->cols; i++) {
+        df->maxWidths[i] = 0;
+    }
+
+    // Compute the maximum width for each column based on its data
+    for (int i = 0; i < df->cols; i++) {
+        ColumnType type = df->types[i];
+        int maxWidth = 0;
+        if (type == CATEGORICAL) {
+            for (int j = 0; j < df->rows; j++) {
+                int width = getMaxWidthForString(df->columns[i].data.strings[j], 0);
+                maxWidth = width > maxWidth ? width : maxWidth;
+            }
+        } else if (type == INTEGER) {
+            for (int j = 0; j < df->rows; j++) {
+                int width = getMaxWidthForInteger(df->columns[i].data.integers[j], 0);
+                maxWidth = width > maxWidth ? width : maxWidth;
+            }
+        } else {
+            for (int j = 0; j < df->rows; j++) {
+                int width = getMaxWidthForFloat(df->columns[i].data.floats[j], 0);
+                maxWidth = width > maxWidth ? width : maxWidth;
+            }
+        }
+
+        // Update maxWidths with the maximum width found for data and heading
+        df->maxWidths[i] = get_max_integer(
+            df->maxWidths[i],
+            getMaxWidthForHeading(df->headings[i]),
+            maxWidth
+        );
+
+        // Include fixed width for column type descriptions
+        int typeWidth = (type == INTEGER) ? INTEGER_WIDTH :
+                        (type == FLOAT) ? FLOAT_WIDTH : CATEGORICAL_WIDTH;
+
+        df->maxWidths[i] = get_max_integer(
+            df->maxWidths[i],
+            typeWidth,
+            df->maxWidths[i]
+        );
+    }
+}
+
+void printDataFrame(DataFrame *df,int rows,int cols) {
+    // Print column headings
+    printf("%-*s", df->maxWidths[0] + 2, "Index"); // Space for row index
+    for (int j = 0; j < cols; j++) {
+        printf("%-*s", df->maxWidths[j] + 2, df->headings[j]); // Add some padding
     }
     printf("\n");
-    for(int i = 0; i < rows; i++){
-        printf("%d ", i+1);
-        for(int j = 0; j < cols; j++){
-            printf("%s ", df.columns[j].data.strings[i]);
+
+    // Print column types
+    printf("%-*s", df->maxWidths[0] + 2, "Integer"); // Space for index type
+    for (int j = 0; j < cols; j++) {
+        if (df->types[j] == INTEGER) {
+            printf("%-*s", df->maxWidths[j] + 2, "Integer"); // Add some padding
+        } else if (df->types[j] == FLOAT) {
+            printf("%-*s", df->maxWidths[j] + 2, "Float"); // Add some padding
+        } else {
+            printf("%-*s", df->maxWidths[j] + 2, "Categorical"); // Add some padding
+        }
+    }
+    printf("\n");
+
+    // Print rows
+    for (int i = 0; i < rows; i++) {
+        printf("%-*d", df->maxWidths[0] + 2, i + 1); // Print row number with padding
+        for (int j = 0; j < cols; j++) {
+            ColumnType type = df->types[j];
+            if (type == INTEGER) {
+                printf("%-*d", df->maxWidths[j] + 2, df->columns[j].data.integers[i]);
+            } else if (type == FLOAT) {
+                printf("%-*.*f", df->maxWidths[j] + 2, 2, df->columns[j].data.floats[i]);
+            } else {
+                printf("%-*s", df->maxWidths[j] + 2, df->columns[j].data.strings[i]);
+            }
         }
         printf("\n");
     }
 }
 
-// Function to print dataframe column names , rows and columns
-void print_rows_cols(DataFrame df){
-    for(int i = 0; i < df.cols; i++){
-        printf("%s ", df.headings[i]);
+// Free memory allocated for DataFrame
+void freeDataFrame(DataFrame *df) {
+    for (int i = 0; i < df->cols; i++) {
+        freeColumn(&df->columns[i], df->types[i], df->rows);
     }
-    printf("Rows: %d\n", df.rows);
-    printf("Columns: %d\n", df.cols);
+    free(df->columns);
+    for (int i = 0; i < df->cols; i++) {
+        free(df->headings[i]);
+    }
+    free(df->headings);
+    free(df->types);
+    free(df->maxWidths);
 }
 
-// Function to free the memory allocated for the DataFrame
-void free_df(DataFrame df) {
-    // Free each column's data
-    printf("Freeing memory\n");
-    for (int i = 0; i < df.cols; i++) {
-        freeColumn(&df.columns[i], df.rows); // Free column data
-    }
-
-    // Free the columns array
-    free(df.columns);
-
-    // Free the headings array
-    for (int i = 0; i < df.cols; i++) {
-        free(df.headings[i]);
-    }
-    free(df.headings);
-    printf("Memory freed\n");
+DataFrame read_csv(char *filename) {
+    DataFrame df = read_csv_initial(filename);
+    computeMaxWidths(&df);
+    return df;
 }
+
 
 /*
-Main function for testing
-Comment out when running main.c
+Make sure the csv file doesnt have missing values as the code does not handle missing values
+
+Comment out this part if running in main
 */
-
-int main(){
-    DataFrame df = read_csv("Salary_Data.csv");
-    print_rows_cols(df);
-    print_df(df, df.rows, df.cols);
+/*
+int main() {
+    // Example usage
+    DataFrame df = read_csv("../files/Salary_Data.csv");
     convert_to_int_float(&df);
-    free_df(df);
-    return 0;
 
+    // Print the DataFrame with rows and columns
+    printDataFrame(&df,df.rows,df.cols);
+
+    freeDataFrame(&df);
+    return 0;
 }
+
+*/

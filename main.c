@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "classification/decision_tree_classifier.h"
+#include "preprocessing/extraction.h"
 
 /*
 The entry point to the machine learning algorithms.
@@ -25,6 +26,17 @@ This is main for initial version of decision tree clasifier where fruits and dis
 There is not much choice for types of fruits and diseases as encoding was fixed.
 */
 
+// This main is to test extracion from preprocessing/extraction.h
+int main() {
+    DataFrame df = read_csv("files/Salary_Data.csv");
+    convert_to_int_float(&df);
+    printDataFrame(&df, df.rows, df.cols);
+    freeDataFrame(&df);
+    return 0;
+}
+
+// This main is for decision tree classifier where fruits and diseases are classified.
+/*
 int main() {
     int choice;
     do {
@@ -147,3 +159,4 @@ int main() {
 
     return 0;
 }
+*/
