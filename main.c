@@ -29,8 +29,7 @@ There is not much choice for types of fruits and diseases as encoding was fixed.
 // This main is to test extracion from preprocessing/extraction.h
 int main() {
     DataFrame df = read_csv("files/Salary_Data.csv");
-    convert_to_int_float(&df);
-    printDataFrame(&df, df.rows, df.cols);
+    printAll(&df);
     freeDataFrame(&df);
     return 0;
 }

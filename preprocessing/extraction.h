@@ -48,8 +48,12 @@ int getMaxWidthForFloat(float value, int currentMax);
 int getMaxWidthForHeading(char *heading);
 int get_max_integer(int a, int b, int c);
 void computeMaxWidths(DataFrame *df);
-void printDataFrame(DataFrame *df, int rows, int cols);
+void printDataFrame(DataFrame *df, int rows, int cols,int start);
+void printAll(DataFrame *df);
+void printHead(DataFrame *df);
+void printTail(DataFrame *df);
 void freeDataFrame(DataFrame *df);
 DataFrame read_csv(char *filename);
+
 
 #endif // EXTRACTION_H

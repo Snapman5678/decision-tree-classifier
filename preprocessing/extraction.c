@@ -397,7 +397,7 @@ void computeMaxWidths(DataFrame *df) {
     }
 }
 
-void printDataFrame(DataFrame *df,int rows,int cols) {
+void printDataFrame(DataFrame *df,int rows,int cols,int start) {
     // Print column headings
     printf("%-*s", df->maxWidths[0] + 2, "Index"); // Space for row index
     for (int j = 0; j < cols; j++) {
@@ -419,7 +419,7 @@ void printDataFrame(DataFrame *df,int rows,int cols) {
     printf("\n");
 
     // Print rows
-    for (int i = 0; i < rows; i++) {
+    for (int i = start; i < rows; i++) {
         printf("%-*d", df->maxWidths[0] + 2, i + 1); // Print row number with padding
         for (int j = 0; j < cols; j++) {
             ColumnType type = df->types[j];
@@ -433,6 +433,21 @@ void printDataFrame(DataFrame *df,int rows,int cols) {
         }
         printf("\n");
     }
+}
+
+//Function to print all the rows of the DataFrame
+void printAll(DataFrame *df) {
+    printDataFrame(df, df->rows, df->cols,0);
+}
+
+//Function to print head or 10 lines of the DataFrame
+void printHead(DataFrame *df) {
+    printDataFrame(df, 10, df->cols,0);
+}
+
+//Function to print tail or 10 lines of the DataFrame
+void printTail(DataFrame *df) {
+    printDataFrame(df, df->rows, df->cols,df->rows-10);
 }
 
 // Free memory allocated for DataFrame
@@ -451,6 +466,7 @@ void freeDataFrame(DataFrame *df) {
 
 DataFrame read_csv(char *filename) {
     DataFrame df = read_csv_initial(filename);
+    convert_to_int_float(&df);
     computeMaxWidths(&df);
     return df;
 }
@@ -465,13 +481,18 @@ Comment out this part if running in main
 int main() {
     // Example usage
     DataFrame df = read_csv("../files/Salary_Data.csv");
-    convert_to_int_float(&df);
 
     // Print the DataFrame with rows and columns
-    printDataFrame(&df,df.rows,df.cols);
+    printDataFrame(&df,df.rows,df.cols,0);
+
+    // Print the head of the DataFrame
+    printHead(&df);
+
+    // Print the tail of the DataFrame
+    printTail(&df);
 
     freeDataFrame(&df);
     return 0;
 }
-
 */
+
