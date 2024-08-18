@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include "classification/decision_tree_classifier.h"
 #include "preprocessing/extraction.h"
+#include "preprocessing/hash_encoding.h"
 
 /*
 The entry point to the machine learning algorithms.
@@ -27,8 +28,21 @@ There is not much choice for types of fruits and diseases as encoding was fixed.
 */
 
 // This main is to test extracion from preprocessing/extraction.h
+/*
 int main() {
     DataFrame df = read_csv("files/Salary_Data.csv");
+    printAll(&df);
+    freeDataFrame(&df);
+    return 0;
+}
+*/
+
+// This main is to test encoding from preprocessing/hash_encoding.h
+int main() {
+    DataFrame df = read_csv("files/Data.csv");
+    printAll(&df);
+    hash_encode(&df);
+    printf("After encoding\n");
     printAll(&df);
     freeDataFrame(&df);
     return 0;

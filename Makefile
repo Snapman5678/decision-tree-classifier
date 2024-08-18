@@ -10,8 +10,9 @@ PREPROCESSING_DIR = preprocessing
 # Define the source files and the object files
 SRCS = $(SRC_DIR)/main.c \
        $(CLASSIFICATION_DIR)/decision_tree_classifier.c \
-       $(PREPROCESSING_DIR)/extraction.c
-OBJS = $(SRCS:.c=.o)
+       $(PREPROCESSING_DIR)/extraction.c \
+       $(PREPROCESSING_DIR)/hash_encoding.c
+OBJS = $(SRCS:%.c=$(SRC_DIR)/%.o)
 
 # Define the output executable
 TARGET = main
@@ -24,7 +25,13 @@ $(TARGET): $(OBJS)
 	$(CC) $(CFLAGS) -o $@ $(OBJS)
 
 # Rule to build object files
-%.o: %.c
+$(SRC_DIR)/%.o: $(SRC_DIR)/%.c
+	$(CC) $(CFLAGS) -I$(CLASSIFICATION_DIR) -I$(PREPROCESSING_DIR) -c $< -o $@
+
+$(CLASSIFICATION_DIR)/%.o: $(CLASSIFICATION_DIR)/%.c
+	$(CC) $(CFLAGS) -I$(CLASSIFICATION_DIR) -I$(PREPROCESSING_DIR) -c $< -o $@
+
+$(PREPROCESSING_DIR)/%.o: $(PREPROCESSING_DIR)/%.c
 	$(CC) $(CFLAGS) -I$(CLASSIFICATION_DIR) -I$(PREPROCESSING_DIR) -c $< -o $@
 
 # Clean rule

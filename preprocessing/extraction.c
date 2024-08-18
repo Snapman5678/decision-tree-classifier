@@ -4,6 +4,19 @@
 #include <ctype.h>
 
 /*
+Preprocessing module
+-extraction.c - entrypoint
+-hash_encoding.c - hash ebconding functions
+*/
+/*
+Brief overview of extraction.c
+This is the entry point to the preprocessing module.
+All structure definitions are defined here.
+All structures's memory allocation and deallocation functions are defined here.
+This funcion reads the csv file and determines the column types simultaneously.
+*/
+
+/*
 Structure that stores the csv data
 */
 
@@ -19,6 +32,26 @@ typedef enum {
     INTEGER = 1,
     FLOAT = 2
 } ColumnType;
+
+// Enum for encoded or not encoded
+typedef enum {
+    NOT_ENCODED = 0,
+    ENCODED = 1,
+} EncodingType;
+
+// Structure that hold encoding data
+
+// structure used to hold actual data compared to value which is being converted
+typedef struct {
+    char *value;
+} Label;
+
+// hash map used to store the actual data and the value which is being converted
+typedef struct {
+    Label *labels;
+    int capacity;
+    int unique_labels;
+} LabelHashMap;
 
 // Define the Column structure
 typedef struct Column {
@@ -36,7 +69,10 @@ typedef struct DataFrame {
     Column *columns; // Array of columns of different types
     ColumnType *types; // Array of column types
     int *maxWidths; // Array of maximum widths for each column
+    EncodingType *encoding; // Array of encoding types for each column
+    LabelHashMap **labelMap; // Array of label maps for each column if encoded
 } DataFrame;
+
 
 // Initialize Column structure
 void initColumn(Column *column, ColumnType type, int size) {
@@ -102,6 +138,8 @@ DataFrame read_csv_initial(char *filename) {
     df.columns = NULL;
     df.types = NULL; // Initialize the types array
     df.maxWidths = NULL;
+    df.encoding = NULL;
+    df.labelMap = NULL;
 
     // Read the file line by line
     char line[1024];
@@ -147,6 +185,18 @@ DataFrame read_csv_initial(char *filename) {
             col++;
         }
         df.cols = col;
+    }
+
+    // Set encoding type as zero for all columns
+    df.encoding = (EncodingType *)malloc(df.cols * sizeof(EncodingType));
+    for(int i=0;i<df.cols;i++) {
+        df.encoding[i] = NOT_ENCODED;
+    }
+
+    // Set label map as NULL for all columns
+    df.labelMap = (LabelHashMap **)malloc(df.cols * sizeof(LabelHashMap *));
+    for(int i=0;i<df.cols;i++) {
+        df.labelMap[i] = NULL;
     }
 
     // Read the data and determine column types simultaneously
@@ -423,7 +473,8 @@ void printDataFrame(DataFrame *df,int rows,int cols,int start) {
         printf("%-*d", df->maxWidths[0] + 2, i + 1); // Print row number with padding
         for (int j = 0; j < cols; j++) {
             ColumnType type = df->types[j];
-            if (type == INTEGER) {
+            EncodingType encoding = df->encoding[j];
+            if (type == INTEGER || encoding == ENCODED) {
                 printf("%-*d", df->maxWidths[j] + 2, df->columns[j].data.integers[i]);
             } else if (type == FLOAT) {
                 printf("%-*.*f", df->maxWidths[j] + 2, 2, df->columns[j].data.floats[i]);
@@ -450,15 +501,44 @@ void printTail(DataFrame *df) {
     printDataFrame(df, df->rows, df->cols,df->rows-10);
 }
 
+// Function to free Label memory allocated
+void freeLabel(Label *label) {
+    if (label->value != NULL) {
+        free(label->value);
+    }
+}
+
+// Function to free the memory allocated for the hash map
+void freeLabelHashMap(LabelHashMap *labelMap) {
+    for (int i = 0; i < labelMap->capacity; i++) {
+        freeLabel(&labelMap->labels[i]);
+    }
+
+    free(labelMap->labels);
+}
+
+
 // Free memory allocated for DataFrame
 void freeDataFrame(DataFrame *df) {
     for (int i = 0; i < df->cols; i++) {
+        if(df->encoding[i] == ENCODED) {
+            freeColumn(&df->columns[i], INTEGER, df->rows);
+        } else {
         freeColumn(&df->columns[i], df->types[i], df->rows);
+        }
     }
     free(df->columns);
     for (int i = 0; i < df->cols; i++) {
         free(df->headings[i]);
     }
+    // Free the LabelHashMaps
+    for (int i = 0; i < df->cols; i++) {
+        if (df->labelMap[i] != NULL) {
+            freeLabelHashMap(df->labelMap[i]);
+            free(df->labelMap[i]);
+        }
+    }
+    free(df->labelMap);
     free(df->headings);
     free(df->types);
     free(df->maxWidths);

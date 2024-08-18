@@ -18,6 +18,23 @@ typedef enum {
     FLOAT = 2
 } ColumnType;
 
+typedef enum {
+    NOT_ENCODED = 0,
+    ENCODED = 1,
+} EncodingType;
+
+// structure used to hold actual data compared to value which is being converted
+typedef struct {
+    char *value;
+} Label;
+
+// hash map used to store the actual data and the value which is being converted
+typedef struct {
+    Label *labels;
+    int capacity;
+    int unique_labels;
+} LabelHashMap;
+
 // Define the Column structure
 typedef struct Column {
     union {
@@ -35,6 +52,8 @@ typedef struct DataFrame {
     Column *columns; // Array of columns of different types
     ColumnType *types; // Array of column types
     int *maxWidths; // Array of maximum widths for each column
+    EncodingType *encoding; // Array of encoding types for each column
+    LabelHashMap **labelMap; // Array of label maps for each column if encoded
 } DataFrame;
 
 // Function prototypes
