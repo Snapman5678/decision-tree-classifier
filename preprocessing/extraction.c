@@ -122,6 +122,25 @@ void freeColumn(Column *column, int type, int size) {
     }
 }
 
+// Fallback strsep implementation cause default strsep is not available in windows
+char *strsep(char **stringp, const char *delim) {
+    char *start = *stringp;
+    char *p;
+
+    if (!start)
+        return NULL;
+
+    p = strpbrk(start, delim);
+    if (p) {
+        *p = '\0';
+        *stringp = p + 1;
+    } else {
+        *stringp = NULL;
+    }
+
+    return start;
+}
+
 // Function to read the CSV file and determine column types simultaneously
 DataFrame read_csv_initial(char *filename) {
     FILE *file = fopen(filename, "r");
@@ -148,7 +167,8 @@ DataFrame read_csv_initial(char *filename) {
     if (fgets(line, sizeof(line), file)) {
         // Remove trailing newline character if present
         line[strcspn(line, "\n")] = '\0';
-        char *token = strtok(line, ",");
+        char *rest = line;
+        char *token = strsep(&rest, ",");
         int col = 0;
 
         // Allocate memory for headings and columns
@@ -181,7 +201,7 @@ DataFrame read_csv_initial(char *filename) {
             initColumn(&df.columns[col], CATEGORICAL, 0); // Initialize with 0 rows initially
             df.types[col] = CATEGORICAL; // Set type to categorical initially
 
-            token = strtok(NULL, ",");
+            token = strsep(&rest, ",");
             col++;
         }
         df.cols = col;
@@ -203,7 +223,8 @@ DataFrame read_csv_initial(char *filename) {
     while (fgets(line, sizeof(line), file)) {
         // Remove trailing newline character if present
         line[strcspn(line, "\n")] = '\0';
-        char *token = strtok(line, ",");
+        char *rest = line;
+        char *token = strsep(&rest, ",");
         int col = 0;
 
         // Resize columns for new row
@@ -220,7 +241,13 @@ DataFrame read_csv_initial(char *filename) {
                 printf("String memory allocation failed for data column %d in row %d\n", i, df.rows);
                 exit(1);
             }
-            strcpy(column->data.strings[df.rows], token);
+
+            // checking if the token is empty and assigning NULL if not empty assigning the token
+            if(token[0] == '\0'){
+                strcpy(column->data.strings[df.rows], "NULL");
+            } else {
+                strcpy(column->data.strings[df.rows], token);
+            }
 
             // Check if the column type should be numerical
             if (type == CATEGORICAL) { // Only check if it's currently categorical
@@ -277,6 +304,12 @@ DataFrame read_csv_initial(char *filename) {
                     }
                 }
 
+                // Check if the token is empty
+                if(token[0] == '\0') {
+                    is_integer = 0;
+                    is_float = 0;
+                }
+
                 // Assign type based on column content
                 if (is_integer) {
                     df.types[i] = INTEGER;
@@ -287,7 +320,7 @@ DataFrame read_csv_initial(char *filename) {
                 }
             }
 
-            token = strtok(NULL, ",");
+            token = strsep(&rest, ",");
             col++;
         }
 
